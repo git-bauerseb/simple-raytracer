@@ -8,7 +8,7 @@ void P3::setBuffer(std::vector<Vec3> buffer) {
 
     m_buffer = buffer;
 }
-
+ 
 void P3::write_image(std::ostream& outfile, bool progress) {
     // Header
     outfile << "P3\n" << m_width << " " << m_height << "\n255\n";

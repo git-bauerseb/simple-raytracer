@@ -1,39 +1,29 @@
 #include <cmath>
+#include <vector>
 #include <iostream>
 #include <fstream>
 
-#include "../include/vec3.h"
-#include "../include/ray.h"
-#include "../include/p3.h"
+#include "../include/misc.h"
+#include "../include/raytracer.h"
+#include "../include/camera.h"
 
-float hit_sphere(const Vec3& center, float radius, const Ray& r) {
-    Vec3 ac = r.origin() - center;
+TraceableList l;
 
-    float ac_dot = ac.dot(ac);
-    float bb_dot = r.direction().dot(r.direction());
-    float bac_dot = r.direction().dot(ac);
+Vec3 ray_color(const Ray& ray, int depth = 1) {
+    Hit hit;
 
-    float discr = 4*bac_dot*bac_dot - 4 * bb_dot * (ac_dot - radius*radius);
-    
-    if (discr < 0) {
-        return -1.0;
-    } else {
-        // Closest hit point (smallest value of t for solving quadratic equation)
-        return (- 2 * bac_dot - std::sqrt(discr) ) / (2 * bb_dot); 
+    if (depth <= 0) {
+        return Vec3(0,0,0);
     }
-}
-
-Vec3 ray_color(const Ray& ray) {
-    float t;
-
-    if ((t = hit_sphere(Vec3{0, 0, -1}, 0.5, ray)) > 0.0) {
-        Vec3  normal = unit_vector(ray.at(t) - Vec3{0, 0, -1});
-        return 0.5 * (normal + 1);
+    
+    if (l.hit(ray, 0, infity, hit)) {
+        Vec3 target = hit.position + hit.normal + Vec3::random_in_unit_sphere();
+        return 0.5 * ray_color(Ray{hit.position, target - hit.position}, depth-1);
     }
 
     Vec3 unit_dir = unit_vector(ray.direction());
-    t = 0.5 * (unit_dir[1] + 1.0);
-    return (1.0 - t) * Vec3(1., 1., 1.) + t * Vec3{0., 0., 0.};
+    float t = 0.5 * (unit_dir[1] + 1.0);
+    return (1.0 - t) * Vec3(1., 1., 1.) + t * Vec3{0.5, 0.7, 1.0};
 }
 
 int main(int argc, char** argv) {
@@ -41,31 +31,40 @@ int main(int argc, char** argv) {
     std::ofstream myfile;
     myfile.open(argv[1]);
 
-    int img_width = 256;
-    int img_height = 256;
+    // SETUP
+    int img_width = 258;
+    int img_height = 258;
+    int samples_per_pixel = 20;
+    int max_depth = 50;
 
-    float viewport_height = 2.0;
-    float viewport_width = 2.0;
+   
+    // World
+    l.add(std::make_shared<Sphere>(Vec3{0, 0, -1}, 0.5f));
+    l.add(std::make_shared<Sphere>(Vec3{0, -100.5f, -1}, 100.0f));
 
-    float focal_length = 1.0;
+    // Camera
+    Camera cam;
 
-    Vec3 ray_origin = Vec3{0, 0, 0};
-    Vec3 horizontal{viewport_width, 0, 0};
-    Vec3 vertical = Vec3{0, viewport_height, 0};
-
-    Vec3 lower_left = ray_origin - horizontal / 2 - vertical / 2 - Vec3{0, 0, focal_length};
-
+    // RENDERING
     P3 p3{img_width,img_height};
     p3.write_header(myfile);
 
+
     for (int j = img_height - 1; j >= 0; j--) {
+        // std::cout << "Rendering line " << j << "\n";
         for (int i = 0; i < img_width; i++) {
-            auto u = float{i} / (img_width-1);
-            auto v = float{j} / (img_height-1);
             
-            Ray ray{ray_origin, lower_left + u * horizontal + v * vertical - ray_origin};
-            Vec3 color = ray_color(ray);
-            write_color(myfile, color);
+            Vec3 color;
+            
+            for (int iter = 0; iter < samples_per_pixel; iter++) {
+                auto u = float{i + random_float()} / (img_width-1);
+                auto v = float{j + random_float()} / (img_height-1);
+                Ray r = cam.get_ray(u, v);            
+
+                color += ray_color(r, max_depth);
+            }
+
+            write_color(myfile, color, samples_per_pixel);
         }
     }
 

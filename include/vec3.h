@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "misc.h"
+
 class Vec3 {
 
     public:
@@ -15,6 +17,10 @@ class Vec3 {
             return m_coords[0] * other.m_coords[0] +
                 m_coords[1] * other.m_coords[1] +
                 m_coords[2] * other.m_coords[2];
+        }
+
+        Vec3 operator-() const {
+            return Vec3{-m_coords[0], -m_coords[1], -m_coords[2]};
         }
 
         Vec3& operator+=(const Vec3& other) {
@@ -52,6 +58,23 @@ class Vec3 {
         }
 
         Vec3 operator-() {return Vec3{-m_coords[0], -m_coords[1], -m_coords[2]};}
+
+        Vec3 static random() {
+            return Vec3{random_float(), random_float(), random_float()};
+        }
+
+        Vec3 static random(float min, float max) {
+            return Vec3{random_float(min, max), random_float(min, max), random_float(min, max)};
+        }
+
+        Vec3 static random_in_unit_sphere() {
+            while (true) {
+                Vec3 p = Vec3::random(-1, 1);
+
+                if (p.length() >= 1) {continue;}
+                return p;
+            }
+        }
 
     private:
         float m_coords[3];
@@ -93,6 +116,5 @@ inline std::ostream& operator<<(std::ostream& outfile, const Vec3& color) {
 /*
     Other functions
 */
-void write_color(std::ostream& outfile, const Vec3& color);
-
+void write_color(std::ostream& outfile, const Vec3& color, int samples);
 #endif
